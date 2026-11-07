@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: snipply-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        value: https://ujibkwqemqeyodxvmcjs.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_gvz7xVDYhErErVLpV3Mo9g_TJPVvGu5
+      - key: CORS_ORIGIN
+        value: https://snipply-frontend-wivs.vercel.app
