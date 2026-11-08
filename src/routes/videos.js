@@ -51,14 +51,12 @@ router.post('/youtube', usageLimit, async (req, res) => {
       return res.status(400).json({ error: 'YouTube URL is required' });
     }
 
-    // Validate YouTube URL
-    const { getYouTubeVideoId, getYouTubeTitle } = require('../services/youtube');
+    // Validate YouTube URL and extract video ID
+    const { getYouTubeVideoId } = require('../services/youtube');
     const videoId = getYouTubeVideoId(url);
     if (!videoId) {
       return res.status(400).json({ error: 'Invalid YouTube URL' });
     }
-
-    const title = await getYouTubeTitle(url);
 
     // Use a default user ID for now (auth will be added back properly)
     const userId = '00000000-0000-0000-0000-000000000001';
@@ -69,7 +67,7 @@ router.post('/youtube', usageLimit, async (req, res) => {
       .insert({
         user_id: userId,
         file_key: `youtube/${userId}/${videoId}`,
-        original_name: title,
+        original_name: 'YouTube Video',
         status: 'pending',
         youtube_url: url
       })
@@ -80,21 +78,7 @@ router.post('/youtube', usageLimit, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Add to processing queue
-    await addVideoJob({
-      videoId: video.id,
-      userId: userId,
-      fileKey: video.file_key,
-      youtubeUrl: url
-    });
-
-    // Update video status
-    await supabase
-      .from('videos')
-      .update({ status: 'queued' })
-      .eq('id', video.id);
-
-    res.json({ message: 'YouTube video queued for processing', videoId: video.id });
+    res.json({ message: 'Video queued for processing', videoId: video.id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
