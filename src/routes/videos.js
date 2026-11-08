@@ -2,7 +2,8 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const usageLimit = require('../middleware/usageLimit');
 const supabase = require('../config/supabase');
-const { getPresignedUploadUrl } = require('../services/storage');
+const { getPresignedUploadUrl, uploadFile } = require('../services/storage');
+const { downloadYouTubeVideo, getYouTubeVideoId, getYouTubeTitle } = require('../services/youtube');
 const { addVideoJob } = require('../services/queue');
 const { v4: uuidv4 } = require('uuid');
 
@@ -36,6 +37,61 @@ router.post('/upload-url', auth, async (req, res) => {
       .single();
 
     res.json({ uploadUrl, videoId: video.id, fileKey });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Process a YouTube URL
+router.post('/youtube', auth, usageLimit, async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'YouTube URL is required' });
+    }
+
+    // Validate YouTube URL
+    const { getYouTubeVideoId, getYouTubeTitle } = require('../services/youtube');
+    const videoId = getYouTubeVideoId(url);
+    if (!videoId) {
+      return res.status(400).json({ error: 'Invalid YouTube URL' });
+    }
+
+    const title = await getYouTubeTitle(url);
+
+    // Create video record in DB
+    const { data: video, error } = await supabase
+      .from('videos')
+      .insert({
+        user_id: req.user.id,
+        file_key: `youtube/${req.user.id}/${videoId}`,
+        original_name: title,
+        status: 'pending',
+        youtube_url: url
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Add to processing queue
+    await addVideoJob({
+      videoId: video.id,
+      userId: req.user.id,
+      fileKey: video.file_key,
+      youtubeUrl: url
+    });
+
+    // Update video status
+    await supabase
+      .from('videos')
+      .update({ status: 'queued' })
+      .eq('id', video.id);
+
+    res.json({ message: 'YouTube video queued for processing', videoId: video.id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

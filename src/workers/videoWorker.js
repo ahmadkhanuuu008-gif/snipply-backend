@@ -4,6 +4,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('../config/supabase');
 const { getPresignedDownloadUrl, deleteFile, uploadFile } = require('../services/storage');
+const { downloadYouTubeVideo, getYouTubeTitle } = require('../services/youtube');
 const { extractAudio, cutClip, convertToVertical, getVideoDuration } = require('../services/ffmpeg');
 const { transcribeAudio } = require('../services/whisper');
 const { findViralMoments } = require('../services/gemini');
@@ -26,10 +27,16 @@ const worker = new Worker('video-processing', async (job) => {
     // 1. Update status to processing
     await supabase.from('videos').update({ status: 'processing' }).eq('id', videoId);
 
-    // 2. Download video from storage to tmp
-    const downloadUrl = await getPresignedDownloadUrl(fileKey);
+    // 2. Download video
     const videoPath = path.join(tmpDir, 'original.mp4');
-    await downloadFile(downloadUrl, videoPath);
+    if (job.data.youtubeUrl) {
+      // Download from YouTube using yt-dlp
+      await downloadYouTubeVideo(job.data.youtubeUrl, videoPath);
+    } else {
+      // Download from storage
+      const downloadUrl = await getPresignedDownloadUrl(fileKey);
+      await downloadFile(downloadUrl, videoPath);
+    }
 
     // 3. Get video duration
     const duration = await getVideoDuration(videoPath);
@@ -95,8 +102,10 @@ const worker = new Worker('video-processing', async (job) => {
       })
       .eq('id', userId);
 
-    // 9. Delete original video from storage (save storage)
-    await deleteFile(fileKey);
+    // 9. Delete original video from storage (save storage) - skip for YouTube
+    if (!job.data.youtubeUrl) {
+      await deleteFile(fileKey);
+    }
 
     // 10. Mark video as done
     await supabase.from('videos')
