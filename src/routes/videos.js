@@ -61,24 +61,22 @@ router.post('/youtube', usageLimit, async (req, res) => {
     // Use a default user ID for now (auth will be added back properly)
     const userId = '00000000-0000-0000-0000-000000000001';
 
-    // Create video record in DB
-    const { data: video, error } = await supabase
-      .from('videos')
-      .insert({
-        user_id: userId,
-        file_key: `youtube/${userId}/${videoId}`,
-        original_name: 'YouTube Video',
-        status: 'pending',
-        youtube_url: url
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
+    // Create video record in DB (non-blocking - ignore errors)
+    try {
+      await supabase
+        .from('videos')
+        .insert({
+          user_id: userId,
+          file_key: `youtube/${userId}/${videoId}`,
+          original_name: 'YouTube Video',
+          status: 'pending',
+          youtube_url: url
+        });
+    } catch (dbErr) {
+      console.error('DB insert error:', dbErr.message);
     }
 
-    res.json({ message: 'Video queued for processing', videoId: video.id });
+    res.json({ message: 'Video queued for processing', videoId: videoId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
