@@ -1,29 +1,22 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
+const usageLimit = require('../middleware/usageLimit');
 const supabase = require('../config/supabase');
-const { getPresignedUploadUrl } = require('../services/r2');
+const { getPresignedUploadUrl } = require('../services/storage');
 const { addVideoJob } = require('../services/queue');
 const { v4: uuidv4 } = require('uuid');
 
-// Get presigned URL for direct R2 upload
+// Get presigned URL for direct upload
 router.post('/upload-url', auth, async (req, res) => {
   try {
     const { filename, contentType, fileSize } = req.body;
 
-    // Check file size limits
-    const { data: userData } = await supabase
-      .from('users')
-      .select('plan')
-      .eq('id', req.user.id)
-      .single();
-
-    const maxSize = userData?.plan === 'pro' 
-      ? 2 * 1024 * 1024 * 1024  // 2GB for pro
-      : 500 * 1024 * 1024;       // 500MB for free
+    // Single limit for all users: 1GB
+    const maxSize = 1 * 1024 * 1024 * 1024; // 1GB for all users
 
     if (fileSize > maxSize) {
       return res.status(400).json({ 
-        error: 'File too large for your plan' 
+        error: 'File too large. Maximum size is 1GB.' 
       });
     }
 
@@ -49,23 +42,9 @@ router.post('/upload-url', auth, async (req, res) => {
 });
 
 // Start processing after upload complete
-router.post('/:videoId/process', auth, async (req, res) => {
+router.post('/:videoId/process', auth, usageLimit, async (req, res) => {
   try {
     const { videoId } = req.params;
-
-    // Check user has enough credits
-    const { data: userData } = await supabase
-      .from('users')
-      .select('credits_used, credits_limit, plan')
-      .eq('id', req.user.id)
-      .single();
-
-    const creditCost = 5; // 5 credits per video
-    if (userData.credits_used + creditCost > userData.credits_limit) {
-      return res.status(400).json({ 
-        error: 'Not enough credits' 
-      });
-    }
 
     // Verify video belongs to user
     const { data: video } = await supabase
@@ -116,6 +95,22 @@ router.get('/:videoId/status', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Admin: manually trigger monthly reset
+router.post('/admin/reset-monthly', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_SECRET_KEY) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  
+  const { error } = await supabase
+    .from('users')
+    .update({ clips_this_month: 0 })
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ message: 'Monthly clips reset for all users' });
 });
 
 module.exports = router;

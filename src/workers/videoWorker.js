@@ -3,21 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('../config/supabase');
-const { getPresignedDownloadUrl, deleteFile } = require('../services/r2');
+const { getPresignedDownloadUrl, deleteFile, uploadFile } = require('../services/storage');
 const { extractAudio, cutClip, convertToVertical, getVideoDuration } = require('../services/ffmpeg');
 const { transcribeAudio } = require('../services/whisper');
 const { findViralMoments } = require('../services/gemini');
 const https = require('https');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
-  }
-});
 
 const connection = {
   host: process.env.UPSTASH_REDIS_HOST,
@@ -29,14 +19,14 @@ const connection = {
 const worker = new Worker('video-processing', async (job) => {
   const { videoId, userId, fileKey } = job.data;
   const tmpDir = `/tmp/${uuidv4()}`;
-
+  
   try {
     fs.mkdirSync(tmpDir, { recursive: true });
 
     // 1. Update status to processing
     await supabase.from('videos').update({ status: 'processing' }).eq('id', videoId);
 
-    // 2. Download video from R2 to tmp
+    // 2. Download video from storage to tmp
     const downloadUrl = await getPresignedDownloadUrl(fileKey);
     const videoPath = path.join(tmpDir, 'original.mp4');
     await downloadFile(downloadUrl, videoPath);
@@ -61,7 +51,7 @@ const worker = new Worker('video-processing', async (job) => {
       moments = { clips: generateFallbackClips(duration) };
     }
 
-    // 7. Cut clips and upload to R2
+    // 7. Cut clips and upload to storage
     const createdClips = [];
     for (const moment of moments.clips) {
       const clipFileName = `clip-${uuidv4()}.mp4`;
@@ -73,13 +63,8 @@ const worker = new Worker('video-processing', async (job) => {
 
       const clipKey = `clips/${userId}/${clipFileName}`;
 
-      // Upload to R2
-      await r2.send(new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
-        Key: clipKey,
-        Body: fs.readFileSync(verticalPath),
-        ContentType: 'video/mp4'
-      }));
+      // Upload to storage
+      await uploadFile(clipKey, fs.readFileSync(verticalPath), 'video/mp4');
 
       // Save clip to database
       const { data: clip } = await supabase.from('clips').insert({
@@ -96,15 +81,21 @@ const worker = new Worker('video-processing', async (job) => {
       createdClips.push(clip);
     }
 
-    // 8. Deduct credits (5 per video)
+    // 8. Increment monthly clip counter
     const { data: userData } = await supabase
-      .from('users').select('credits_used').eq('id', userId).single();
+      .from('users')
+      .select('clips_this_month')
+      .eq('id', userId)
+      .single();
 
-    await supabase.from('users')
-      .update({ credits_used: (userData.credits_used || 0) + 5 })
+    await supabase
+      .from('users')
+      .update({ 
+        clips_this_month: (userData?.clips_this_month || 0) + 1
+      })
       .eq('id', userId);
 
-    // 9. Delete original video from R2 (save storage)
+    // 9. Delete original video from storage (save storage)
     await deleteFile(fileKey);
 
     // 10. Mark video as done

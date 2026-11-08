@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
 const supabase = require('../config/supabase');
-const { getPresignedDownloadUrl } = require('../services/r2');
+const { getPresignedDownloadUrl } = require('../services/storage');
 
 // Get all clips for user
 router.get('/', auth, async (req, res) => {

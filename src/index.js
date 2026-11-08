@@ -14,7 +14,7 @@ app.use(rateLimitMiddleware);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/videos', require('./routes/videos'));
 app.use('/api/clips', require('./routes/clips'));
-app.use('/api/credits', require('./routes/credits'));
+app.use('/api/stats', require('./routes/stats'));
 
 // Health check (root + /health for Railway/Render default healthchecks)
 app.get('/', (req, res) => {
