@@ -16,7 +16,11 @@ app.use('/api/videos', require('./routes/videos'));
 app.use('/api/clips', require('./routes/clips'));
 app.use('/api/credits', require('./routes/credits'));
 
-// Health check
+// Health check (root + /health for Railway/Render default healthchecks)
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'snipply-backend' });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'snipply-backend' });
 });
