@@ -42,8 +42,8 @@ router.post('/upload-url', auth, async (req, res) => {
   }
 });
 
-// Process a YouTube URL
-router.post('/youtube', auth, usageLimit, async (req, res) => {
+// Process a YouTube URL (no auth required for now - open beta)
+router.post('/youtube', usageLimit, async (req, res) => {
   try {
     const { url } = req.body;
 
@@ -60,12 +60,15 @@ router.post('/youtube', auth, usageLimit, async (req, res) => {
 
     const title = await getYouTubeTitle(url);
 
+    // Use a default user ID for now (auth will be added back properly)
+    const userId = '00000000-0000-0000-0000-000000000001';
+
     // Create video record in DB
     const { data: video, error } = await supabase
       .from('videos')
       .insert({
-        user_id: req.user.id,
-        file_key: `youtube/${req.user.id}/${videoId}`,
+        user_id: userId,
+        file_key: `youtube/${userId}/${videoId}`,
         original_name: title,
         status: 'pending',
         youtube_url: url
@@ -80,7 +83,7 @@ router.post('/youtube', auth, usageLimit, async (req, res) => {
     // Add to processing queue
     await addVideoJob({
       videoId: video.id,
-      userId: req.user.id,
+      userId: userId,
       fileKey: video.file_key,
       youtubeUrl: url
     });
