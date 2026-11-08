@@ -1,41 +1,42 @@
-import { supabaseAdmin } from "../lib/supabase.js";
+const router = require('express').Router();
+const auth = require('../middleware/auth');
+const supabase = require('../config/supabase');
+const { getPresignedDownloadUrl } = require('../services/r2');
 
-export function clipsRouter(express) {
-  const router = express.Router();
+// Get all clips for user
+router.get('/', auth, async (req, res) => {
+  try {
+    const { data: clips } = await supabase
+      .from('clips')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
 
-  // List clips, optionally filtered by video_id.
-  router.get("/", async (req, res) => {
-    let query = supabaseAdmin.from("clips").select("*").eq("user_id", req.user.id);
-    if (req.query.video_id) query = query.eq("video_id", req.query.video_id);
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ clips: data });
-  });
+    res.json(clips || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  // Create a clip record.
-  router.post("/", async (req, res) => {
-    const { video_id, download_url } = req.body || {};
-    if (!video_id) return res.status(400).json({ error: "video_id is required" });
-    const { data, error } = await supabaseAdmin
-      .from("clips")
-      .insert({ user_id: req.user.id, video_id, download_url })
-      .select()
+// Get download URL for a clip
+router.get('/:clipId/download', auth, async (req, res) => {
+  try {
+    const { data: clip } = await supabase
+      .from('clips')
+      .select('*')
+      .eq('id', req.params.clipId)
+      .eq('user_id', req.user.id)
       .single();
-    if (error) return res.status(500).json({ error: error.message });
-    res.status(201).json({ clip: data });
-  });
 
-  // Get a single clip.
-  router.get("/:id", async (req, res) => {
-    const { data, error } = await supabaseAdmin
-      .from("clips")
-      .select("*")
-      .eq("id", req.params.id)
-      .eq("user_id", req.user.id)
-      .single();
-    if (error) return res.status(404).json({ error: "Clip not found" });
-    res.json({ clip: data });
-  });
+    if (!clip) {
+      return res.status(404).json({ error: 'Clip not found' });
+    }
 
-  return router;
-}
+    const downloadUrl = await getPresignedDownloadUrl(clip.file_key);
+    res.json({ downloadUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

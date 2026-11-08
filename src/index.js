@@ -1,45 +1,40 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import { requireAuth } from "./middleware/auth.js";
-import { healthRouter } from "./routes/health.js";
-import { videosRouter } from "./routes/videos.js";
-import { clipsRouter } from "./routes/clips.js";
-
+const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
+require('dotenv').config();
 
-// Allowed origins (comma-separated in CORS_ORIGIN).
-const corsOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+const corsMiddleware = require('./middleware/cors');
+const rateLimitMiddleware = require('./middleware/rateLimit');
 
-app.use(helmet());
-app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json({ limit: "10mb" }));
-app.use(morgan("combined"));
+app.use(corsMiddleware);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(rateLimitMiddleware);
 
-// Health check (no auth).
-app.use("/health", healthRouter(express));
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/videos', require('./routes/videos'));
+app.use('/api/clips', require('./routes/clips'));
+app.use('/api/credits', require('./routes/credits'));
 
-// Protected API routes.
-app.use("/api/videos", requireAuth, videosRouter(express));
-app.use("/api/clips", requireAuth, clipsRouter(express));
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'snipply-backend' });
+});
 
-// 404 handler.
+// 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: "Not found", path: req.path });
+  res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler.
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Snipply backend listening on port ${PORT}`);
+  console.log(`Snipply backend running on port ${PORT}`);
 });
+
+module.exports = app;
