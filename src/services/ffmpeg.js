@@ -18,12 +18,22 @@ async function extractAudioWav(videoPath, outputPath) {
 // Cut + convert to 9:16 vertical (1080x1920) in one pass
 async function makeClip(videoPath, start, end, outputPath) {
   const duration = Math.max(0.5, end - start);
-  await execAsync(
-    `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
-      `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
-      `-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}" -y`,
-    OPTS
-  );
+  try {
+    await execAsync(
+      `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
+        `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
+        `-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}" -y`,
+      OPTS
+    );
+  } catch (err) {
+    // Fallback: let ffmpeg pick default codecs (libx264/aac may not be built in)
+    await execAsync(
+      `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
+        `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
+        `-movflags +faststart "${outputPath}" -y`,
+      OPTS
+    );
+  }
   if (!fs.existsSync(outputPath)) throw new Error('ffmpeg did not produce a clip');
   return outputPath;
 }
