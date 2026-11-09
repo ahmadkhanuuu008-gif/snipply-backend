@@ -3,6 +3,8 @@ const { Queue } = require('bullmq');
 const connection = {
   host: process.env.UPSTASH_REDIS_HOST,
   port: process.env.UPSTASH_REDIS_PORT,
+  // ACL users require two-arg AUTH (`AUTH user pass`); absent username => single-arg (default user)
+  username: process.env.UPSTASH_REDIS_USERNAME || undefined,
   password: process.env.UPSTASH_REDIS_PASSWORD,
   tls: {}
 };
