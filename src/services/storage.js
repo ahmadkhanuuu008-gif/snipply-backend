@@ -16,9 +16,13 @@ async function getPresignedUploadUrl(fileKey, contentType) {
 }
 
 async function getPresignedDownloadUrl(fileKey) {
+  return getSignedUrl(fileKey, 3600);
+}
+
+async function getSignedUrl(fileKey, ttlSeconds = 3600) {
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(fileKey, 3600);
+    .createSignedUrl(fileKey, ttlSeconds);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }
@@ -44,6 +48,7 @@ async function deleteFile(fileKey) {
 module.exports = {
   getPresignedUploadUrl,
   getPresignedDownloadUrl,
+  getSignedUrl,
   uploadFile,
   deleteFile
 };

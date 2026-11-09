@@ -4,32 +4,31 @@ const fs = require('fs');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 
-// Extract audio from video for transcription
-async function extractAudio(videoPath, outputPath) {
+const OPTS = { timeout: 10 * 60 * 1000 };
+
+// Extract audio (16k mono WAV) from video for transcription
+async function extractAudioWav(videoPath, outputPath) {
   await execAsync(
-    `ffmpeg -i "${videoPath}" -vn -acodec mp3 -ar 16000 -ac 1 "${outputPath}" -y`
+    `ffmpeg -i "${videoPath}" -vn -ar 16000 -ac 1 -c:a pcm_s16le "${outputPath}" -y`,
+    OPTS
   );
   return outputPath;
 }
 
-// Cut video clip at timestamps
-async function cutClip(videoPath, start, end, outputPath) {
-  const duration = end - start;
+// Cut + convert to 9:16 vertical (1080x1920) in one pass
+async function makeClip(videoPath, start, end, outputPath) {
+  const duration = Math.max(0.5, end - start);
   await execAsync(
-    `ffmpeg -i "${videoPath}" -ss ${start} -t ${duration} -c:v libx264 -c:a aac -strict experimental "${outputPath}" -y`
+    `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
+      `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
+      `-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}" -y`,
+    OPTS
   );
+  if (!fs.existsSync(outputPath)) throw new Error('ffmpeg did not produce a clip');
   return outputPath;
 }
 
-// Convert to vertical 9:16 format for shorts
-async function convertToVertical(inputPath, outputPath) {
-  await execAsync(
-    `ffmpeg -i "${inputPath}" -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" -c:a copy "${outputPath}" -y`
-  );
-  return outputPath;
-}
-
-// Get video duration
+// Get video duration via ffprobe
 async function getVideoDuration(videoPath) {
   const { stdout } = await execAsync(
     `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`
@@ -37,4 +36,4 @@ async function getVideoDuration(videoPath) {
   return parseFloat(stdout.trim());
 }
 
-module.exports = { extractAudio, cutClip, convertToVertical, getVideoDuration };
+module.exports = { extractAudioWav, makeClip, getVideoDuration };

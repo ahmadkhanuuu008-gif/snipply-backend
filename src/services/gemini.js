@@ -34,10 +34,13 @@ Rules:
 `;
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const raw = result.response.text();
+  // Strip markdown code fences if present
+  const text = raw.replace(/```(?:json)?/gi, '').trim();
 
   // Validate and parse JSON
-  const parsed = JSON.parse(text);
+  const match = text.match(/\{[\s\S]*\}/);
+  const parsed = JSON.parse(match ? match[0] : text);
 
   // Validate timestamps
   const validClips = parsed.clips.filter(clip => 

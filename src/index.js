@@ -16,6 +16,14 @@ app.use('/api/videos', require('./routes/videos'));
 app.use('/api/clips', require('./routes/clips'));
 app.use('/api/stats', require('./routes/stats'));
 
+// Start the video processing worker (BullMQ consumer) in this process
+try {
+  require('./workers/videoWorker');
+  console.log('Video worker started (queue: video-processing)');
+} catch (err) {
+  console.error('Failed to start video worker:', err.message);
+}
+
 // Health check (root + /health for Railway/Render default healthchecks)
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'snipply-backend' });
