@@ -18,6 +18,9 @@ async function downloadYouTubeVideoDir(url, targetDir) {
     base, // default client
     [...base, '--extractor-args', 'youtube:player_client=web_safari'],
     [...base, '--extractor-args', 'youtube:player_client=mweb'],
+    [...base, '--extractor-args', 'youtube:player_client=tv'],
+    [...base, '--extractor-args', 'youtube:player_client=android'],
+    [...base, '--extractor-args', 'youtube:player_client=ios'],
   ];
 
   let lastErr = null;
