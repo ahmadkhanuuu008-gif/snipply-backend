@@ -118,6 +118,7 @@ async function processVideoJob(data) {
       const assPath = path.join(tmpDir, `caps-${i}.ass`);
       const finalPath = path.join(tmpDir, `final-${i}.mp4`);
 
+      if (!fs.existsSync(videoPath)) throw new Error('Input video file missing before clip cutting');
       await makeClip(videoPath, moment.start, moment.end, rawPath);
 
       // Burn captions when we have word/segment timing
@@ -183,9 +184,10 @@ async function processVideoJob(data) {
     console.log(`[worker] job ${videoId} done — ${createdClips.length} clips`);
     return { success: true, clipsCreated: createdClips.length };
   } catch (err) {
-    console.error(`[worker] job ${videoId} FAILED:`, err.message);
+    const errMsg = err.message || String(err);
+    console.error(`[worker] job ${videoId} FAILED:`, errMsg);
     try {
-      await supabase.from('videos').update({ status: 'failed', error: err.message.slice(0, 300) }).eq('id', videoId);
+      await supabase.from('videos').update({ status: 'failed', error: errMsg.slice(0, 1000) }).eq('id', videoId);
     } catch {}
     throw err;
   } finally {
