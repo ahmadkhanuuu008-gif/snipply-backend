@@ -11,6 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
+# Cache bust: 2026-11-10-v2
 COPY . .
 
 EXPOSE 3001
