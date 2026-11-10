@@ -79,15 +79,15 @@ function buildAssFile(destPath, whisperData, start, end) {
   const header = `[Script Info]
 Title: Snipply Captions
 ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
+PlayResX: 720
+PlayResY: 1280
 WrapStyle: 2
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Snipply,DejaVu Sans,68,&H00FFFFFF,&H00000000,&H00000000,&H7F000000,-1,0,0,0,100,100,2,0,3,5,2,2,60,60,300,1
-Style: SnipplyBox,DejaVu Sans,70,&H00FFFFFF,&H00000000,&H00000000,&HC8000000,-1,0,0,0,100,100,2,0,1,5,2,2,60,60,300,1
+Style: Snipply,DejaVu Sans,45,&H00FFFFFF,&H00000000,&H00000000,&H7F000000,-1,0,0,0,100,100,2,0,3,5,2,2,60,60,300,1
+Style: SnipplyBox,DejaVu Sans,47,&H00FFFFFF,&H00000000,&H00000000,&HC8000000,-1,0,0,0,100,100,2,0,1,5,2,2,60,60,300,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

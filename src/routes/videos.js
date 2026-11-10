@@ -102,7 +102,10 @@ router.post('/youtube', auth, usageLimit, async (req, res) => {
         file_key: `youtube/${userId}/${videoId}`,
         original_name: title,
         status: 'pending',
-        youtube_url: url
+        youtube_url: url,
+        youtube_id: videoId,
+        source: 'youtube',
+        original_url: url
       })
       .select()
       .single();
