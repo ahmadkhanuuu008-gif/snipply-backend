@@ -187,7 +187,7 @@ async function processVideoJob(data) {
     const errMsg = err.message || String(err);
     console.error(`[worker] job ${videoId} FAILED:`, errMsg);
     try {
-      await supabase.from('videos').update({ status: 'failed', error: errMsg.slice(0, 5000) }).eq('id', videoId);
+      await supabase.from('videos').update({ status: 'failed', error: errMsg.slice(0, 20000) }).eq('id', videoId);
     } catch {}
     throw err;
   } finally {
