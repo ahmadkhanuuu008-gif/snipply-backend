@@ -12,6 +12,9 @@ async function downloadYouTubeVideoDir(url, targetDir) {
     '--merge-output-format', 'mp4',
     '--socket-timeout', '20',
     '-o', path.join(targetDir, 'video.%(ext)s'),
+    // Pass YouTube cookies to bypass bot detection on datacenter IPs
+    '--add-header', 'Cookie: APISID=NsR7xL44BseZXT_O/A-EPV4ynk73-D68Vq; SAPISID=xSkKj7nJNBM40jip/AfmfnhW1beE8fsnJs; __Secure-1PAPISID=xSkKj7nJNBM40jip/AfmfnhW1beE8fsnJs; __Secure-3PAPISID=xSkKj7nJNBM40jip/AfmfnhW1beE8fsnJs; SID=g.a000EgmhVx62dJrs8WXAiV4LwJ93SLLj3iDAaZq71C5MW_A9FaQxjrhsxoKlsWJsOJQ-xN8eQAACgYKAXoSARISFQHGX2Mis72gGeHhHPVdmWUg-D78ZBoVAUF8yKoBZD_wxfhI1l6gABkiGpw20076; PREF=f4=4000000&f6=40000000; SIDCC=APD_SKEyL-qXcsqRUJuycpMbp2JNSE01AonwtrqfhukFFR2auF_dm9PiSTEGViLj-P12dKzK4w',
+    '--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   ];
 
   const attempts = [
