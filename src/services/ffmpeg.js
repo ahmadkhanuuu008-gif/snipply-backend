@@ -8,8 +8,8 @@ const execAsync = promisify(exec);
 const OPTS = { timeout: 10 * 60 * 1000 };
 
 function ffmpegError(err, cmd) {
-  const stderr = err.stderr ? `\nSTDERR: ${err.stderr.slice(0, 5000)}` : '';
-  const stdout = err.stdout ? `\nSTDOUT: ${err.stdout.slice(0, 1000)}` : '';
+  const stderr = err.stderr ? `\nSTDERR: ${err.stderr.slice(-5000)}` : '';
+  const stdout = err.stdout ? `\nSTDOUT: ${err.stdout.slice(-1000)}` : '';
   return new Error(`FFmpeg failed: ${cmd}${stderr}${stdout}`);
 }
 
