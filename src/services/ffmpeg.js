@@ -31,14 +31,15 @@ async function extractAudioWav(videoPath, outputPath) {
 // Cut + convert to 9:16 vertical (1080x1920) in one pass
 async function makeClip(videoPath, start, end, outputPath) {
   const duration = Math.max(0.5, end - start);
+  const vf = 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2';
   const cmdWithCodecs =
     `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
-    `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
-    `-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}" -y`;
+    `-vf "${vf}" ` +
+    `-c:v libx264 -preset ultrafast -crf 26 -c:a aac -b:a 96k -movflags +faststart -threads 2 "${outputPath}" -y`;
   const cmdNoCodecs =
     `ffmpeg -ss ${start} -i "${videoPath}" -t ${duration} ` +
-    `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" ` +
-    `-movflags +faststart "${outputPath}" -y`;
+    `-vf "${vf}" ` +
+    `-movflags +faststart -threads 2 "${outputPath}" -y`;
 
   try {
     await execAsync(cmdWithCodecs, OPTS);
