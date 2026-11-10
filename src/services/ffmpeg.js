@@ -8,9 +8,11 @@ const execAsync = promisify(exec);
 const OPTS = { timeout: 10 * 60 * 1000 };
 
 function ffmpegError(err, cmd) {
-  const stderr = err.stderr ? `\nSTDERR: ${err.stderr.slice(-20000)}` : '';
-  const stdout = err.stdout ? `\nSTDOUT: ${err.stdout.slice(-5000)}` : '';
-  return new Error(`FFmpeg failed: ${cmd}${stderr}${stdout}`);
+  const exitCode = err.code !== undefined ? err.code : 'N/A';
+  const signal = err.signal || 'N/A';
+  const stderr = err.stderr ? `\nSTDERR (last 20000): ${err.stderr.slice(-20000)}` : '';
+  const stdout = err.stdout ? `\nSTDOUT (last 5000): ${err.stdout.slice(-5000)}` : '';
+  return new Error(`FFmpeg failed (exit=${exitCode}, signal=${signal}): ${cmd}${stderr}${stdout}`);
 }
 
 // Extract audio (16k mono WAV) from video for transcription
